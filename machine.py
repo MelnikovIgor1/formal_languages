@@ -283,6 +283,8 @@ class StateMachine(object):
             return tex_text
 
     def make_tex(self, filename):
+        os.system("if ! [ -f ./out ]; then\nmkdir ./out\nfi\n")
+        
         self.prepared_files.append(filename)
         tex_text = ''
         with open('tex/start', 'r') as begin_file:

@@ -109,9 +109,9 @@ def test_remove_epsilon(num_nodes, single_edges, start, finish, alphabet, expect
     for from_, letter, to_ in single_edges:
         edges[from_].update({letter: to_})
 
-    automata = StateMachine(nodes, edges, start, finish, alphabet)
-    automata.remove_epsilon()
+    machine = StateMachine(nodes, edges, start, finish, alphabet)
+    machine.remove_epsilon()
 
-    print(automata.make_dump())
+    print(machine.make_dump())
 
-    assert expected == automata.make_dump()
+    assert expected == machine.make_dump()

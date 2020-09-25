@@ -255,6 +255,8 @@ class StateMachine(object):
     @staticmethod
     def find_direction(i, n):
         print("<", i, " ", n, ">")
+        if i == 0:
+            return 'right'
         if i < n/4:
             return 'left'
         if i < n/2:
@@ -272,7 +274,7 @@ class StateMachine(object):
 
             return tex_text
         else:
-            tex_text = '    edge [loop = {}]'.format(self.find_direction(num, len(self.nodes)))
+            tex_text = '    edge [loop {}]'.format(self.find_direction(num, len(self.nodes)))
             tex_text += 'node {' + '${}$'.format(letter if letter != '' else '\\varepsilon') + '}' + '({})'.format(
                 to_)
             tex_text += '\n'

@@ -1,5 +1,5 @@
 import pytest
-from main import StateMachine
+from machine import StateMachine
 
 
 def setup():

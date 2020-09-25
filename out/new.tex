@@ -1,0 +1,38 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{cmap}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage[left=1.5cm,right=1.5cm,top=1.75cm,bottom=1.75cm]{geometry}
+
+\newcommand{\timelimit}{}
+
+\usepackage{tikz}
+\usetikzlibrary{automata, positioning, arrows}
+
+
+\begin{document}
+\pagestyle{empty}
+\noindent
+
+\begin{tikzpicture}[->, >=stealth', on grid, auto, node distance = 2.5cm, every state/.style={thick, fill=gray!20}]
+\node[state, initial](1)at(-5.0, -0.0){1};
+\node[state, accepting](2)at(-3.061616997868383e-16, -5.0){2};
+\node[state](3)at(5.0, -6.123233995736766e-16){3};
+\node[state](4)at(9.184850993605148e-16, 5.0){4};
+
+\path
+(1)
+    edge [loop = left]node {$a$}(1)
+(2)
+    edge [loop = below]node {$b$}(2)
+(3)
+    edge [loop = right]node {$a$}(3)
+(4)
+    edge [loop = above]node {$a$}(4)
+;
+
+\end{tikzpicture}
+\end{document}
+

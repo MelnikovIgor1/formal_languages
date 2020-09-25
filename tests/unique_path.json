@@ -1,0 +1,32 @@
+{
+    "expected": {
+        "alphabet": [
+            "",
+            "b",
+            "a"
+        ],
+        "edges": {
+            "['s0']": {
+                "a": "['{\"py/reduce\": [{\"py/type\": \"builtins.frozenset\"}, {\"py/tuple\": [[\"s2\", \"s3\"]]}]}']",
+                "b": "['{\"py/reduce\": [{\"py/type\": \"builtins.frozenset\"}, {\"py/tuple\": [[\"s1\"]]}]}']"
+            },
+            "['s1']": {
+                "": "['{\"py/reduce\": [{\"py/type\": \"builtins.frozenset\"}, {\"py/tuple\": [[\"s3\"]]}]}']",
+                "a": "['{\"py/reduce\": [{\"py/type\": \"builtins.frozenset\"}, {\"py/tuple\": [[\"s2\", \"s3\"]]}]}']"
+            },
+            "['s2', 's3']": {
+                "a": "['{\"py/reduce\": [{\"py/type\": \"builtins.frozenset\"}, {\"py/tuple\": [[\"s5\", \"s4\"]]}]}']"
+            },
+            "['s3']": {
+                "a": "['{\"py/reduce\": [{\"py/type\": \"builtins.frozenset\"}, {\"py/tuple\": [[\"s5\", \"s4\"]]}]}']"
+            }
+        },
+        "final": [],
+        "nodes": [
+            "{\"py/reduce\": [{\"py/type\": \"builtins.frozenset\"}, {\"py/tuple\": [[\"s0\"]]}]}",
+            "{\"py/reduce\": [{\"py/type\": \"builtins.frozenset\"}, {\"py/tuple\": [[\"s1\"]]}]}",
+            "{\"py/reduce\": [{\"py/type\": \"builtins.frozenset\"}, {\"py/tuple\": [[\"s2\", \"s3\"]]}]}",
+            "{\"py/reduce\": [{\"py/type\": \"builtins.frozenset\"}, {\"py/tuple\": [[\"s3\"]]}]}",
+            "{\"py/reduce\": [{\"py/type\": \"builtins.frozenset\"}, {\"py/tuple\": [[\"s5\", \"s4\"]]}]}"
+        ],
+        "start": 

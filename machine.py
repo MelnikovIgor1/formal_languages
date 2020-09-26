@@ -4,9 +4,25 @@ from copy import copy
 import copy
 import json
 
+import jsonpickle
 
 Epsilon = ''
 
+
+def word_plus(a, b):
+    if a == Epsilon:
+        return '(1 + {})'.format(b)
+    if b == Epsilon:
+        return '({} + 1)'.format(a)
+    return '({} + {})'.format(a, b)
+
+
+def word_conj(a, b, symbol):
+    if not a:
+        return '{}'.format(b)
+    if not b:
+        return '{}'.format(a)
+    return '({}{}{})'.format(a, symbol, b)
 
 
 def sub_set(set_):
@@ -258,25 +274,26 @@ class StateMachine(object):
         print("<", i, " ", n, ">")
         if i == 0:
             return 'right'
-        if i < n/4:
+        if i < n / 4:
             return 'left'
-        if i < n/2:
+        if i < n / 2:
             return 'below'
-        if i < 3*n/4:
+        if i < 3 * n / 4:
             return 'right'
         return 'above'
 
-    def _make_tex_edge(self, letter, num, from_, to_):
+    def _make_tex_edge(self, letter, num, index, from_, to_):
         if from_ != to_:
-            tex_text = '    edge [bend left = {' + '{}'.format(10 + 15 * num) + '}]'
-            tex_text += 'node {' + '${}$'.format(letter if letter != '' else '\\varepsilon') + '}' + '({})'.format(
-                to_)
+            tex_text = '    edge [bend left = {' + '{}'.format(10 + 15 * index) + '}]'
+            tex_text += 'node {' + '${}$'.format(letter if letter != '' else '\\varepsilon') + \
+                        '}' + '({})'.format(to_)
             tex_text += '\n'
 
             return tex_text
         else:
             tex_text = '    edge [loop {}]'.format(self.find_direction(num, len(self.nodes)))
-            tex_text += 'node {' + '${}$'.format(letter if letter != '' else '\\varepsilon') + '}' + '({})'.format(
+            tex_text += 'node {' + '$' + '\;\;\;\;\;\;' * index + '{}$'.format(
+                letter if letter != '' else '\\varepsilon') + '}' + '({})'.format(
                 to_)
             tex_text += '\n'
 
@@ -284,7 +301,7 @@ class StateMachine(object):
 
     def make_tex(self, filename):
         os.system("if ! [ -f ./out ]; then\nmkdir ./out\nfi\n")
-        
+
         self.prepared_files.append(filename)
         tex_text = ''
         with open('tex/start', 'r') as begin_file:
@@ -305,8 +322,8 @@ class StateMachine(object):
 
         for (from_, to_), letters in new_E.items():
             tex_text += '({})'.format(from_) + '\n'
-            for num, letter in enumerate(letters):
-                tex_text += self._make_tex_edge(letter, nodes_num[from_], from_, to_)
+            for index, letter in enumerate(letters):
+                tex_text += self._make_tex_edge(letter, nodes_num[from_], index, from_, to_)
 
         tex_text += ';\n'
 
@@ -345,3 +362,158 @@ class StateMachine(object):
         for file in self.prepared_files:
             os.system('open out/{}.pdf'.format(file))
 
+    def make_final(self):
+        new_node = new_word(self.nodes)
+        self.nodes.add(new_node)
+
+        for node in self.nodes:
+            if node in self.edges:
+                new_letters = self.Alphabet - self.edges[node].keys()
+                for letter in new_letters:
+                    self.add_edge(node, letter, {new_node})
+            else:
+                for letter in self.Alphabet:
+                    self.add_edge(node, letter, {new_node})
+
+    def erase_edge(self, from_, letter, to_):
+        self.edges[from_][letter] = self.edges[from_][letter] - to_
+        if self.edges[from_][letter] == {}:
+            del self.edges[from_][letter]
+
+    def add_throw_edge(self, from_, from_letter, mid, mid_letter, to_, to_letter):
+        if mid_letter:
+            word = '({}({})^*{})'.format(from_letter, mid_letter, to_letter)
+        else:
+            word = word_conj(from_letter, to_letter, '')  # '({}{})'.format(from_letter, to_letter)
+        self.add_edge(from_, word, {to_})
+
+        for letter, edge in copy.copy(self.edges[from_]).items():
+            if letter != word and to_ in edge:
+                mix_word = word_plus(word, letter)
+                self.erase_edge(from_, word, {to_})
+                self.erase_edge(from_, letter, {to_})
+
+                self.add_edge(from_, mix_word, {to_})
+
+    def make_single_edges(self):
+        new_edges = dict()
+        new_letter = dict()
+        for node, edge in self.edges.items():
+            for letter, node_sets in copy.copy(edge).items():
+                for node_to in node_sets:
+                    if (node, node_to) in new_edges:
+                        new_edges[(node, node_to)] = word_plus(new_edges[(node, node_to)], letter)
+                        self.erase_edge(node, letter, {node_to})
+                    else:
+                        new_edges.update({(node, node_to): letter})
+                        new_letter.update({(node, node_to): letter})
+                        self.erase_edge(node, letter, {node_to})
+        for (from_, to_), letter in new_letter.items():
+            self.add_edge(from_, new_edges[(from_, to_)], {to_})
+
+    def _remove_node(self, removing_node):
+        word = ''
+
+        if removing_node in self.edges:
+            for letter, nodes in self.edges[removing_node].items():
+                if removing_node in nodes:
+                    word = letter
+                    break
+
+        for node, edge in self.edges.items():
+            for letter, node_sets in copy.copy(edge).items():
+                if removing_node in node_sets and removing_node in self.edges:
+                    for to_letter, to_edges in copy.copy(self.edges[removing_node]).items():
+                        if to_edges == removing_node:
+                            continue
+                        for to_edge in to_edges:
+                            self.add_throw_edge(node, letter, removing_node, word, to_edge, to_letter)
+
+        for node, edge in self.edges.items():
+            for letter, node_sets in edge.items():
+                if removing_node in node_sets:
+                    self.erase_edge(node, letter, {removing_node})
+
+        if removing_node in self.edges:
+            del self.edges[removing_node]
+
+        self.nodes.remove(removing_node)
+
+    def remove_all(self):
+        self.make_single_edges()
+        self.make_one_final()
+        self.make_tex('single')
+        for num, node in enumerate(copy.copy(self.nodes)):
+            if node not in self.final and node != self.start:
+                self._remove_node(node)
+                self.make_tex(num)
+
+    def make_regular_tex(self, filename, text):
+        os.system("if ! [ -f ./out ]; then\nmkdir ./out\nfi\n")
+
+        self.prepared_files.append(filename)
+        tex_text = ''
+        with open('tex/start', 'r') as begin_file:
+            tex_text += begin_file.read() + '\n'
+
+        tex_text += '${}$'.format(text)
+
+        with open('tex/end', 'r') as end_file:
+            tex_text += end_file.read()
+
+        with open('out/{}.tex'.format(filename), 'w') as out_file:
+            out_file.write(tex_text)
+
+    def get_regular(self):
+        if len(self.nodes) == 1:
+            for node, edge in self.edges.items():
+                for word, _ in edge:
+                    return word
+            return None
+
+        if len(self.nodes) == 2:
+            a = self.start
+            b = ''
+
+            for node in self.nodes:
+                if node != a:
+                    b = node
+
+            loop_a = ''
+            loop_b = ''
+
+            a_b_edge = ''
+            b_a_edge = ''
+
+            if a in self.edges:
+                for letter, to_ in self.edges[a].items():
+                    if a in to_:
+                        loop_a = letter
+                    if b in to_:
+                        a_b_edge = letter
+
+            if b in self.edges:
+                for letter, to_ in self.edges[b].items():
+                    if b in to_:
+                        loop_b = letter
+                    if a in to_:
+                        b_a_edge = letter
+
+            text = ''
+
+            if b_a_edge:
+                text += '{}^*'.format(loop_a)
+                text += '{}^*'.format(a_b_edge)
+                text += '('
+                text += '{}^*+'.format(loop_b)
+                if loop_a:
+                    text += '{} {}^*{}'.format(b_a_edge, loop_a, a_b_edge)
+                else:
+                    text += '{} {}'.format(b_a_edge, a_b_edge)
+                text += ')^*'
+            else:
+                text += '{}^*'.format(loop_a) if loop_a else ''
+                text += '{}'.format(a_b_edge) if a_b_edge else ''
+                text += '{}^*'.format(loop_b) if loop_b else ''
+
+            self.make_regular_tex('reg', text)

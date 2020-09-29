@@ -133,6 +133,193 @@ class StateMachine(object):
         self.edges = new_edges
         self.final = new_final
 
+    def __str__(self):
+        text = ''
+        text += 'nodes:\n'
+
+        for node in self.nodes:
+            text += "{}{}\n".format('  ', node)
+
+            if node in self.edges:
+                for (letter, vertex_edges) in self.edges[node].items():
+                    for edge in vertex_edges:
+                        text += "{}{}{}{}\n".format('    ', edge, ' ', letter)
+
+        text += "start: {}\n".format(self.start)
+        text += "final: {}\n".format(self.final)
+
+        return text
+
+    def _remove_node(self, removing_node):
+        word = ''
+
+        if removing_node in self.edges:
+            for letter, nodes in self.edges[removing_node].items():
+                if removing_node in nodes:
+                    word = letter
+                    break
+
+        for node, edge in self.edges.items():
+            for letter, node_sets in copy.copy(edge).items():
+                if removing_node in node_sets and removing_node in self.edges:
+                    for to_letter, to_edges in copy.copy(self.edges[removing_node]).items():
+                        if to_edges == removing_node:
+                            continue
+                        for to_edge in to_edges:
+                            self._add_throw_edge(node, letter, removing_node, word, to_edge, to_letter)
+
+        for node, edge in self.edges.items():
+            for letter, node_sets in edge.items():
+                if removing_node in node_sets:
+                    self._erase_edge(node, letter, {removing_node})
+
+        if removing_node in self.edges:
+            del self.edges[removing_node]
+
+        self.nodes.remove(removing_node)
+
+    def _make_dump(self):
+        return copy.deepcopy({'nodes': self.nodes,
+                              'edges': self.edges,
+                              'start': self.start,
+                              'final': self.final,
+                              'alphabet': self.Alphabet})
+
+    def _erase_edge(self, from_, letter, to_):
+        self.edges[from_][letter] = self.edges[from_][letter] - to_
+        if self.edges[from_][letter] == {}:
+            del self.edges[from_][letter]
+
+    def _make_tex_node(self, node, num):
+        tex_text = '\\node[state'
+        if node == self.start:
+            tex_text += ', initial'
+        if node in self.final:
+            tex_text += ', accepting'
+        tex_text += ']({})'.format(node)
+        angel = 2 * math.pi * num / len(self.nodes)
+        tex_text += 'at({}, {})'.format(-math.cos(angel) * 5,
+                                        -math.sin(angel) * 5)
+        tex_text += '{' + '{}'.format(node) + '};\n'
+
+        return tex_text
+
+    def _clear_edges(self):
+        for node, edges in copy.deepcopy(self.edges).items():
+            for letter, set_ in copy.copy(edges).items():
+                if not set_:
+                    del self.edges[node][letter]
+            if not edges:
+                del self.edges[node]
+
+    @staticmethod
+    def _find_direction(i, n):
+        print("<", i, " ", n, ">")
+        if i == 0:
+            return 'right'
+        if i < n / 4:
+            return 'left'
+        if i < n / 2:
+            return 'below'
+        if i < 3 * n / 4:
+            return 'right'
+        return 'above'
+
+    def _make_tex_edge(self, letter, num, index, from_, to_):
+        if from_ != to_:
+            tex_text = '    edge [bend left = {' + '{}'.format(10 + 15 * index) + '}]'
+            tex_text += 'node {' + '${}$'.format(letter if letter != '' else '\\varepsilon') + \
+                        '}' + '({})'.format(to_)
+            tex_text += '\n'
+
+            return tex_text
+        else:
+            tex_text = '    edge [loop {}]'.format(self._find_direction(num, len(self.nodes)))
+            tex_text += 'node {' + '$' + ('\;' * 8) * index + '{}$'.format(
+                letter if letter != '' else '\\varepsilon') + '}' + '({})'.format(
+                to_)
+            tex_text += '\n'
+
+            return tex_text
+
+    def _add_throw_edge(self, from_, from_letter, mid, mid_letter, to_, to_letter):
+        if mid_letter:
+            word = '({}({})^*{})'.format(from_letter, mid_letter, to_letter)
+        else:
+            word = word_conj(from_letter, to_letter, '')  # '({}{})'.format(from_letter, to_letter)
+        self._add_edge(from_, word, {to_})
+
+        for letter, edge in copy.copy(self.edges[from_]).items():
+            if letter != word and to_ in edge:
+                mix_word = word_sum(word, letter)
+                self._erase_edge(from_, word, {to_})
+                self._erase_edge(from_, letter, {to_})
+
+                self._add_edge(from_, mix_word, {to_})
+
+    def make_tex(self, filename):
+        os.system("if ! [ -f ./out ]; then\nmkdir ./out\nfi\n")
+
+        self.prepared_files.append(filename)
+        tex_text = ''
+        with open('tex/start', 'r') as begin_file:
+            tex_text += begin_file.read() + '\n'
+
+        sort_nodes = list(copy.deepcopy(self.nodes))
+        sort_nodes.sort()
+
+        nodes_num = dict()
+
+        for num, node in enumerate(sort_nodes):
+            nodes_num.update({node: num})
+            tex_text += self._make_tex_node(node, num)
+
+        tex_text += '\n\\path\n'
+
+        new_E = other_edges(self.edges)
+
+        for (from_, to_), letters in new_E.items():
+            tex_text += '({})'.format(from_) + '\n'
+            for index, letter in enumerate(letters):
+                tex_text += self._make_tex_edge(letter, nodes_num[from_], index, from_, to_)
+
+        tex_text += ';\n'
+
+        with open('tex/end', 'r') as end_file:
+            tex_text += end_file.read()
+
+        with open('out/{}.tex'.format(filename), 'w') as out_file:
+            out_file.write(tex_text)
+
+    def upload_machine(self, filename):
+        with open(filename, 'r') as read_file:
+            data = json.load(read_file)
+
+        self.nodes = set(data['nodes'])
+        self.start = data['start']
+        self.final = set(data['final'])
+        self.Alphabet = set(data['alphabet'])
+
+        for complex_edge in data['edges']:
+            self._add_edge(complex_edge[0], complex_edge[1], set(complex_edge[2]))
+
+        print(self.nodes)
+        print(self.start)
+        print(self.final)
+        print(self.edges)
+
+    def prepare_files(self):
+        for file in self.prepared_files:
+            os.system('pdflatex  -output-directory=out -jobname={} out/{}.tex'.format(file, file))
+
+        for file in self.prepared_files:
+            os.system('rm out/{}.log'.format(file))
+            os.system('rm out/{}.aux'.format(file))
+            # os.system('rm out/{}.tex'.format(file))
+
+        for file in self.prepared_files:
+            os.system('open out/{}.pdf'.format(file))
+
     def remove_epsilon(self):
         new_edges = []
 
@@ -215,30 +402,6 @@ class StateMachine(object):
         self.start = new_start
         self.final = new_final
 
-    def __str__(self):
-        text = ''
-        text += 'nodes:\n'
-
-        for node in self.nodes:
-            text += "{}{}\n".format('  ', node)
-
-            if node in self.edges:
-                for (letter, vertex_edges) in self.edges[node].items():
-                    for edge in vertex_edges:
-                        text += "{}{}{}{}\n".format('    ', edge, ' ', letter)
-
-        text += "start: {}\n".format(self.start)
-        text += "final: {}\n".format(self.final)
-
-        return text
-
-    def _make_dump(self):
-        return copy.deepcopy({'nodes': self.nodes,
-                              'edges': self.edges,
-                              'start': self.start,
-                              'final': self.final,
-                              'alphabet': self.Alphabet})
-
     def make_one_final(self):
         if len(self.final) <= 1:
             return
@@ -254,113 +417,6 @@ class StateMachine(object):
     def invert_finite(self):
         self.final = self.nodes - self.final
 
-    def _make_tex_node(self, node, num):
-        tex_text = '\\node[state'
-        if node == self.start:
-            tex_text += ', initial'
-        if node in self.final:
-            tex_text += ', accepting'
-        tex_text += ']({})'.format(node)
-        angel = 2 * math.pi * num / len(self.nodes)
-        tex_text += 'at({}, {})'.format(-math.cos(angel) * 5,
-                                        -math.sin(angel) * 5)
-        tex_text += '{' + '{}'.format(node) + '};\n'
-
-        return tex_text
-
-    @staticmethod
-    def _find_direction(i, n):
-        print("<", i, " ", n, ">")
-        if i == 0:
-            return 'right'
-        if i < n / 4:
-            return 'left'
-        if i < n / 2:
-            return 'below'
-        if i < 3 * n / 4:
-            return 'right'
-        return 'above'
-
-    def _make_tex_edge(self, letter, num, index, from_, to_):
-        if from_ != to_:
-            tex_text = '    edge [bend left = {' + '{}'.format(10 + 15 * index) + '}]'
-            tex_text += 'node {' + '${}$'.format(letter if letter != '' else '\\varepsilon') + \
-                        '}' + '({})'.format(to_)
-            tex_text += '\n'
-
-            return tex_text
-        else:
-            tex_text = '    edge [loop {}]'.format(self._find_direction(num, len(self.nodes)))
-            tex_text += 'node {' + '$' + ('\;' * 8) * index + '{}$'.format(
-                letter if letter != '' else '\\varepsilon') + '}' + '({})'.format(
-                to_)
-            tex_text += '\n'
-
-            return tex_text
-
-    def make_tex(self, filename):
-        os.system("if ! [ -f ./out ]; then\nmkdir ./out\nfi\n")
-
-        self.prepared_files.append(filename)
-        tex_text = ''
-        with open('tex/start', 'r') as begin_file:
-            tex_text += begin_file.read() + '\n'
-
-        sort_nodes = list(copy.deepcopy(self.nodes))
-        sort_nodes.sort()
-
-        nodes_num = dict()
-
-        for num, node in enumerate(sort_nodes):
-            nodes_num.update({node: num})
-            tex_text += self._make_tex_node(node, num)
-
-        tex_text += '\n\\path\n'
-
-        new_E = other_edges(self.edges)
-
-        for (from_, to_), letters in new_E.items():
-            tex_text += '({})'.format(from_) + '\n'
-            for index, letter in enumerate(letters):
-                tex_text += self._make_tex_edge(letter, nodes_num[from_], index, from_, to_)
-
-        tex_text += ';\n'
-
-        with open('tex/end', 'r') as end_file:
-            tex_text += end_file.read()
-
-        with open('out/{}.tex'.format(filename), 'w') as out_file:
-            out_file.write(tex_text)
-
-    def upload_machine(self, filename):
-        with open(filename, 'r') as read_file:
-            data = json.load(read_file)
-
-        self.nodes = set(data['nodes'])
-        self.start = data['start']
-        self.final = set(data['final'])
-        self.Alphabet = set(data['alphabet'])
-
-        for complex_edge in data['edges']:
-            self._add_edge(complex_edge[0], complex_edge[1], set(complex_edge[2]))
-
-        print(self.nodes)
-        print(self.start)
-        print(self.final)
-        print(self.edges)
-
-    def prepare_files(self):
-        for file in self.prepared_files:
-            os.system('pdflatex  -output-directory=out -jobname={} out/{}.tex'.format(file, file))
-
-        for file in self.prepared_files:
-            os.system('rm out/{}.log'.format(file))
-            os.system('rm out/{}.aux'.format(file))
-            # os.system('rm out/{}.tex'.format(file))
-
-        for file in self.prepared_files:
-            os.system('open out/{}.pdf'.format(file))
-
     def make_final(self):
         new_node = new_word(self.nodes)
         self.nodes.add(new_node)
@@ -373,26 +429,6 @@ class StateMachine(object):
             else:
                 for letter in self.Alphabet:
                     self._add_edge(node, letter, {new_node})
-
-    def _erase_edge(self, from_, letter, to_):
-        self.edges[from_][letter] = self.edges[from_][letter] - to_
-        if self.edges[from_][letter] == {}:
-            del self.edges[from_][letter]
-
-    def add_throw_edge(self, from_, from_letter, mid, mid_letter, to_, to_letter):
-        if mid_letter:
-            word = '({}({})^*{})'.format(from_letter, mid_letter, to_letter)
-        else:
-            word = word_conj(from_letter, to_letter, '')  # '({}{})'.format(from_letter, to_letter)
-        self._add_edge(from_, word, {to_})
-
-        for letter, edge in copy.copy(self.edges[from_]).items():
-            if letter != word and to_ in edge:
-                mix_word = word_sum(word, letter)
-                self._erase_edge(from_, word, {to_})
-                self._erase_edge(from_, letter, {to_})
-
-                self._add_edge(from_, mix_word, {to_})
 
     def make_single_edges(self):
         new_edges = dict()
@@ -409,34 +445,7 @@ class StateMachine(object):
                         self._erase_edge(node, letter, {node_to})
         for (from_, to_), letter in new_letter.items():
             self._add_edge(from_, new_edges[(from_, to_)], {to_})
-
-    def _remove_node(self, removing_node):
-        word = ''
-
-        if removing_node in self.edges:
-            for letter, nodes in self.edges[removing_node].items():
-                if removing_node in nodes:
-                    word = letter
-                    break
-
-        for node, edge in self.edges.items():
-            for letter, node_sets in copy.copy(edge).items():
-                if removing_node in node_sets and removing_node in self.edges:
-                    for to_letter, to_edges in copy.copy(self.edges[removing_node]).items():
-                        if to_edges == removing_node:
-                            continue
-                        for to_edge in to_edges:
-                            self.add_throw_edge(node, letter, removing_node, word, to_edge, to_letter)
-
-        for node, edge in self.edges.items():
-            for letter, node_sets in edge.items():
-                if removing_node in node_sets:
-                    self._erase_edge(node, letter, {removing_node})
-
-        if removing_node in self.edges:
-            del self.edges[removing_node]
-
-        self.nodes.remove(removing_node)
+        self._clear_edges()
 
     def remove_all(self):
         self.make_single_edges()
@@ -445,6 +454,31 @@ class StateMachine(object):
             if node not in self.final and node != self.start:
                 self._remove_node(node)
                 self.make_tex(num)
+
+    def get_invert_language(self, file_name):
+        self.remove_epsilon()
+        self.make_unique_path()
+        self.make_final()
+        self.invert_finite()
+        self.remove_all()
+        self.get_regular(file_name)
+
+    def make_0_1_edges(self):
+        for node, edge in copy.deepcopy(self.edges).items():
+            for letter, node_sets in copy.copy(edge).items():
+                if len(letter) > 1:
+                    new_nodes = new_words(len(letter) - 1, self.nodes)
+                    self._erase_edge(node, letter, node_sets)
+
+                    self._add_edge(node, letter[0], {new_nodes[0]})
+                    self._add_edge(new_nodes[-1], letter[-1], node_sets)
+
+                    if len(letter) > 2:
+                        for i in range(len(new_nodes) - 1):
+                            self._add_edge(new_nodes[i], letter[i + 1], {new_nodes[i + 1]})
+
+                    self.nodes.update(new_nodes)
+        self._clear_edges()
 
     def make_regular_tex(self, filename, text):
         os.system("if ! [ -f ./out ]; then\nmkdir ./out\nfi\n")
@@ -515,30 +549,6 @@ class StateMachine(object):
                 text += '{}^*'.format(loop_b) if loop_b else ''
 
             self.make_regular_tex(file_name, text)
-
-    def get_invert_language(self, file_name):
-        self.remove_epsilon()
-        self.make_unique_path()
-        self.make_final()
-        self.invert_finite()
-        self.remove_all()
-        self.get_regular(file_name)
-
-    def make_0_1_edges(self):
-        for node, edge in copy.deepcopy(self.edges).items():
-            for letter, node_sets in copy.copy(edge).items():
-                if len(letter) > 1:
-                    new_nodes = new_words(len(letter) - 1, self.nodes)
-                    self._erase_edge(node, letter, node_sets)
-
-                    self._add_edge(node, letter[0], {new_nodes[0]})
-                    self._add_edge(new_nodes[-1], letter[-1], node_sets)
-
-                    if len(letter) > 2:
-                        for i in range(len(new_nodes) - 1):
-                            self._add_edge(new_nodes[i], letter[i + 1], {new_nodes[i + 1]})
-
-                    self.nodes.update(new_nodes)
 
 
 def are_homomorphic(machine_a, machine_b):

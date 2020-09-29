@@ -51,7 +51,7 @@ def new_words(num, forbidden):
     answer = []
     while counter < num:
         if word not in forbidden:
-            answer.append(copy(word))
+            answer.append(copy.copy(word))
             counter += 1
         i += 1
         word = "s{}".format(i)
@@ -157,6 +157,9 @@ class StateMachine(object):
 
         for all_edges in self.edges.values():
             all_edges.pop(Epsilon, None)
+
+        if Epsilon in self.Alphabet:
+            self.Alphabet.remove(Epsilon)
 
     @staticmethod
     def make_node_list(nodes):
@@ -442,7 +445,6 @@ class StateMachine(object):
     def remove_all(self):
         self.make_single_edges()
         self.make_one_final()
-        self.make_tex('single')
         for num, node in enumerate(copy.copy(self.nodes)):
             if node not in self.final and node != self.start:
                 self._remove_node(node)
@@ -464,7 +466,7 @@ class StateMachine(object):
         with open('out/{}.tex'.format(filename), 'w') as out_file:
             out_file.write(tex_text)
 
-    def get_regular(self):
+    def get_regular(self, file_name):
         if len(self.nodes) == 1:
             for node, edge in self.edges.items():
                 for word, _ in edge:
@@ -516,4 +518,28 @@ class StateMachine(object):
                 text += '{}'.format(a_b_edge) if a_b_edge else ''
                 text += '{}^*'.format(loop_b) if loop_b else ''
 
-            self.make_regular_tex('reg', text)
+            self.make_regular_tex(file_name, text)
+
+    def get_invert_language(self, file_name):
+        self.remove_epsilon()
+        self.make_unique_path()
+        self.make_final()
+        self.invert_finite()
+        self.remove_all()
+        self.get_regular(file_name)
+
+    def make_0_1_edges(self):
+        for node, edge in copy.deepcopy(self.edges).items():
+            for letter, node_sets in copy.copy(edge).items():
+                if len(letter) > 1:
+                    new_nodes = new_words(len(letter) - 1, self.nodes)
+                    self.erase_edge(node, letter, node_sets)
+
+                    self.add_edge(node, letter[0], {new_nodes[0]})
+                    self.add_edge(new_nodes[-1], letter[-1], node_sets)
+
+                    if len(letter) > 2:
+                        for i in range(len(new_nodes) - 1):
+                            self.add_edge(new_nodes[i], letter[i + 1], {new_nodes[i + 1]})
+
+                    self.nodes.update(new_nodes)

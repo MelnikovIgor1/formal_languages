@@ -75,7 +75,7 @@ def parse_machine(machine_info):
                                      3, [
                                          ('s0', '', {'s1'}),
                                          ('s1', 'a', {'s2'})
-                                     ], '0', {'1'}, {'a', 'b', ''},
+                                     ], 's0', {'s1'}, {'a', 'b', ''},
                                      False
                              )
                          ])
@@ -174,7 +174,7 @@ def test_remove_epsilon(num_nodes, single_edges, start, finish, alphabet, expect
     machine = prepare_machine(num_nodes, single_edges, start, finish, alphabet)
     machine.remove_epsilon()
 
-    assert expected == machine.make_dump()
+    assert expected == machine._make_dump()
 
 
 @pytest.mark.parametrize("num_nodes,single_edges,start,finish,alphabet,expected", [
@@ -228,7 +228,7 @@ def test_make_final(num_nodes, single_edges, start, finish, alphabet, expected):
     machine = prepare_machine(num_nodes, single_edges, start, finish, alphabet)
     machine.make_final()
 
-    assert expected == machine.make_dump()
+    assert expected == machine._make_dump()
 
 
 @pytest.mark.parametrize("num_nodes,single_edges,start,finish,alphabet,expected", [
@@ -253,4 +253,6 @@ def test_make_one_final(num_nodes, single_edges, start, finish, alphabet, expect
     machine = prepare_machine(num_nodes, single_edges, start, finish, alphabet)
     machine.make_final()
 
-    assert expected == machine.make_dump()
+    assert expected == machine._make_dump()
+
+

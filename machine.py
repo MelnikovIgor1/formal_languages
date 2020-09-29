@@ -10,7 +10,7 @@ import jsonpickle
 Epsilon = ''
 
 
-def word_plus(a, b):
+def word_sum(a, b):
     if a == Epsilon:
         return '(1 + {})'.format(b)
     if b == Epsilon:
@@ -94,16 +94,16 @@ class StateMachine(object):
 
         self.prepared_files = []
 
-    def get_edge(self, from_, letter):
+    def _get_edge(self, from_, letter):
         if from_ in self.edges:
             return self.edges[from_][letter]
         else:
             return set()
 
-    def add_edge(self, from_, letter, to_):
+    def _add_edge(self, from_, letter, to_):
         add_edge(self.edges, from_, letter, to_)
 
-    def clean_node(self):
+    def _clean_node(self):
         visited = {node_: False for node_ in self.nodes}
         visited[self.start] = True
 
@@ -160,24 +160,13 @@ class StateMachine(object):
                                 visited[new_node] = True
 
         for (out, (letter, to)) in new_edges:
-            self.add_edge(out, letter, to)
+            self._add_edge(out, letter, to)
 
         for all_edges in self.edges.values():
             all_edges.pop(Epsilon, None)
 
         if Epsilon in self.Alphabet:
             self.Alphabet.remove(Epsilon)
-
-    @staticmethod
-    def make_node_list(nodes):
-        node_copy = []  # list(self.nodes)
-        for node in nodes:
-            if type(node) == frozenset:
-                node_copy.append(jsonpickle.encode(node))
-            else:
-                node_copy.append(node)
-
-        return node_copy
 
     def make_unique_path(self):
         diction = {frozenset({self.start}): '0'}
@@ -243,7 +232,7 @@ class StateMachine(object):
 
         return text
 
-    def make_dump(self):
+    def _make_dump(self):
         return copy.deepcopy({'nodes': self.nodes,
                               'edges': self.edges,
                               'start': self.start,
@@ -258,7 +247,7 @@ class StateMachine(object):
         self.nodes.add(new_node)
 
         for node in self.final:
-            self.add_edge(node, Epsilon, {new_node})
+            self._add_edge(node, Epsilon, {new_node})
 
         self.final = {new_node}
 
@@ -280,7 +269,7 @@ class StateMachine(object):
         return tex_text
 
     @staticmethod
-    def find_direction(i, n):
+    def _find_direction(i, n):
         print("<", i, " ", n, ">")
         if i == 0:
             return 'right'
@@ -301,8 +290,8 @@ class StateMachine(object):
 
             return tex_text
         else:
-            tex_text = '    edge [loop {}]'.format(self.find_direction(num, len(self.nodes)))
-            tex_text += 'node {' + '$' + '\;\;\;\;\;\;' * index + '{}$'.format(
+            tex_text = '    edge [loop {}]'.format(self._find_direction(num, len(self.nodes)))
+            tex_text += 'node {' + '$' + ('\;' * 8) * index + '{}$'.format(
                 letter if letter != '' else '\\varepsilon') + '}' + '({})'.format(
                 to_)
             tex_text += '\n'
@@ -343,7 +332,7 @@ class StateMachine(object):
         with open('out/{}.tex'.format(filename), 'w') as out_file:
             out_file.write(tex_text)
 
-    def upload_automata(self, filename):
+    def upload_machine(self, filename):
         with open(filename, 'r') as read_file:
             data = json.load(read_file)
 
@@ -353,7 +342,7 @@ class StateMachine(object):
         self.Alphabet = set(data['alphabet'])
 
         for complex_edge in data['edges']:
-            self.add_edge(complex_edge[0], complex_edge[1], set(complex_edge[2]))
+            self._add_edge(complex_edge[0], complex_edge[1], set(complex_edge[2]))
 
         print(self.nodes)
         print(self.start)
@@ -380,12 +369,12 @@ class StateMachine(object):
             if node in self.edges:
                 new_letters = self.Alphabet - self.edges[node].keys()
                 for letter in new_letters:
-                    self.add_edge(node, letter, {new_node})
+                    self._add_edge(node, letter, {new_node})
             else:
                 for letter in self.Alphabet:
-                    self.add_edge(node, letter, {new_node})
+                    self._add_edge(node, letter, {new_node})
 
-    def erase_edge(self, from_, letter, to_):
+    def _erase_edge(self, from_, letter, to_):
         self.edges[from_][letter] = self.edges[from_][letter] - to_
         if self.edges[from_][letter] == {}:
             del self.edges[from_][letter]
@@ -395,15 +384,15 @@ class StateMachine(object):
             word = '({}({})^*{})'.format(from_letter, mid_letter, to_letter)
         else:
             word = word_conj(from_letter, to_letter, '')  # '({}{})'.format(from_letter, to_letter)
-        self.add_edge(from_, word, {to_})
+        self._add_edge(from_, word, {to_})
 
         for letter, edge in copy.copy(self.edges[from_]).items():
             if letter != word and to_ in edge:
-                mix_word = word_plus(word, letter)
-                self.erase_edge(from_, word, {to_})
-                self.erase_edge(from_, letter, {to_})
+                mix_word = word_sum(word, letter)
+                self._erase_edge(from_, word, {to_})
+                self._erase_edge(from_, letter, {to_})
 
-                self.add_edge(from_, mix_word, {to_})
+                self._add_edge(from_, mix_word, {to_})
 
     def make_single_edges(self):
         new_edges = dict()
@@ -412,14 +401,14 @@ class StateMachine(object):
             for letter, node_sets in copy.copy(edge).items():
                 for node_to in node_sets:
                     if (node, node_to) in new_edges:
-                        new_edges[(node, node_to)] = word_plus(new_edges[(node, node_to)], letter)
-                        self.erase_edge(node, letter, {node_to})
+                        new_edges[(node, node_to)] = word_sum(new_edges[(node, node_to)], letter)
+                        self._erase_edge(node, letter, {node_to})
                     else:
                         new_edges.update({(node, node_to): letter})
                         new_letter.update({(node, node_to): letter})
-                        self.erase_edge(node, letter, {node_to})
+                        self._erase_edge(node, letter, {node_to})
         for (from_, to_), letter in new_letter.items():
-            self.add_edge(from_, new_edges[(from_, to_)], {to_})
+            self._add_edge(from_, new_edges[(from_, to_)], {to_})
 
     def _remove_node(self, removing_node):
         word = ''
@@ -442,7 +431,7 @@ class StateMachine(object):
         for node, edge in self.edges.items():
             for letter, node_sets in edge.items():
                 if removing_node in node_sets:
-                    self.erase_edge(node, letter, {removing_node})
+                    self._erase_edge(node, letter, {removing_node})
 
         if removing_node in self.edges:
             del self.edges[removing_node]
@@ -540,14 +529,14 @@ class StateMachine(object):
             for letter, node_sets in copy.copy(edge).items():
                 if len(letter) > 1:
                     new_nodes = new_words(len(letter) - 1, self.nodes)
-                    self.erase_edge(node, letter, node_sets)
+                    self._erase_edge(node, letter, node_sets)
 
-                    self.add_edge(node, letter[0], {new_nodes[0]})
-                    self.add_edge(new_nodes[-1], letter[-1], node_sets)
+                    self._add_edge(node, letter[0], {new_nodes[0]})
+                    self._add_edge(new_nodes[-1], letter[-1], node_sets)
 
                     if len(letter) > 2:
                         for i in range(len(new_nodes) - 1):
-                            self.add_edge(new_nodes[i], letter[i + 1], {new_nodes[i + 1]})
+                            self._add_edge(new_nodes[i], letter[i + 1], {new_nodes[i + 1]})
 
                     self.nodes.update(new_nodes)
 
@@ -574,7 +563,7 @@ def are_homomorphic(machine_a, machine_b):
                 if len(a_edges) > 1:
                     raise Exception("ambiguous edge")
 
-                b_edges = machine_b.get_edge(isomorphism[current], letter)
+                b_edges = machine_b._get_edge(isomorphism[current], letter)
                 if len(b_edges) > 1:
                     raise Exception("ambiguous edge")
 
@@ -588,13 +577,17 @@ def are_homomorphic(machine_a, machine_b):
                         else:
                             queue.append(node_a)
 
+    for node_a in machine_a.final:
+        if isomorphism[node_a] not in machine_b.final:
+            return False
+
     return True
 
 
 def are_equal(machine_a, machine_b):
+    if machine_a.Alphabet != machine_b.Alphabet:
+        return False
+
     x = are_homomorphic(machine_a, machine_b)
     y = are_homomorphic(machine_b, machine_a)
     return x and y
-
-
-

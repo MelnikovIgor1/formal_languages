@@ -2,7 +2,7 @@ import machine
 
 if __name__ == "__main__":
     x = machine.StateMachine({}, dict(), None, {}, {})
-    x.upload_automata('input.json')
+    x.upload_machine('input.json')
 
     x.make_tex('start')
     x.make_0_1_edges()

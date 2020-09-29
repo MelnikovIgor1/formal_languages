@@ -3,6 +3,7 @@ import os
 from copy import copy
 import copy
 import json
+from logging import exception
 
 import jsonpickle
 
@@ -92,6 +93,12 @@ class StateMachine(object):
         self.Alphabet = alphabet  # set
 
         self.prepared_files = []
+
+    def get_edge(self, from_, letter):
+        if from_ in self.edges:
+            return self.edges[from_][letter]
+        else:
+            return set()
 
     def add_edge(self, from_, letter, to_):
         add_edge(self.edges, from_, letter, to_)
@@ -543,3 +550,51 @@ class StateMachine(object):
                             self.add_edge(new_nodes[i], letter[i + 1], {new_nodes[i + 1]})
 
                     self.nodes.update(new_nodes)
+
+
+def are_homomorphic(machine_a, machine_b):
+    isomorphism = {machine_a.start: machine_b.start}
+
+    def update_isomorphism(isomorphism_, a, b):
+        if a not in isomorphism_:
+            isomorphism_.update({a: b})
+            return True
+        else:
+            if isomorphism_[a] == b:
+                return True
+            else:
+                return False
+
+    queue = [machine_a.start]
+
+    while queue:
+        current = queue.pop(0)
+        if current in machine_a.edges:
+            for letter, a_edges in machine_a.edges[current].items():
+                if len(a_edges) > 1:
+                    raise Exception("ambiguous edge")
+
+                b_edges = machine_b.get_edge(isomorphism[current], letter)
+                if len(b_edges) > 1:
+                    raise Exception("ambiguous edge")
+
+                if len(a_edges) != len(b_edges):
+                    return False
+
+                for node_b in b_edges:
+                    for node_a in a_edges:
+                        if not update_isomorphism(isomorphism, node_a, node_b):
+                            return False
+                        else:
+                            queue.append(node_a)
+
+    return True
+
+
+def are_equal(machine_a, machine_b):
+    x = are_homomorphic(machine_a, machine_b)
+    y = are_homomorphic(machine_b, machine_a)
+    return x and y
+
+
+

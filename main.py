@@ -4,20 +4,14 @@ if __name__ == "__main__":
     x = machine.StateMachine({}, dict(), None, {}, {})
     x.upload_machine('input.json')
 
-    x.make_tex('start')
-    x.make_0_1_edges()
-    x.make_tex('make_0_1_edges')
-    x.remove_epsilon()
-    x.make_tex('remove_epsilon')
-    x.make_unique_path()
-    x.make_tex('make_unique_path')
-    x.make_final()
-    x.make_tex('make_final')
-    x.invert_finite()
-    x.make_tex('invert_finite')
-    x.remove_all()
+    y = dict()
 
-    x.get_regular('reg')
+    for node in x.nodes:
+        y.update({node: 1 if node in x.final else 0})
+
+    print(x._make_state_enumeration())
+
+    # x.get_regular('reg')
 
     # x.make_tex('1')
     # x.make_0_1_edges()

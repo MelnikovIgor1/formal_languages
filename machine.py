@@ -550,6 +550,46 @@ class StateMachine(object):
 
             self.make_regular_tex(file_name, text)
 
+    def _improve_states_enumeration(self, last_dict):
+        sets = dict()
+        enumeration = dict()
+        for node in self.nodes:
+            enumeration.update({node: dict()})
+            current_dict = dict()
+            current_dict_hashable = set()
+            for letter, edge in self.edges[node].items():
+                current_dict.update({letter: {last_dict[node_] for node_ in edge}})
+                current_dict_hashable.add((letter, frozenset({last_dict[node_] for node_ in edge})))
+            current_dict_hashable = frozenset(current_dict_hashable)
+            if current_dict_hashable in sets:
+                enumeration.update({node: sets[current_dict_hashable]})
+            else:
+                enumeration.update({node: len(sets)})
+                sets.update({current_dict_hashable: len(sets)})
+        return enumeration, len(sets)
+
+    def _make_state_enumeration(self):
+        enumeration = {node: 1 if node in self.final else 0 for node in self.nodes}
+        num_sz = 2
+        last = 0
+        while last != num_sz:
+            last = num_sz
+            enumeration, num_sz = self._improve_states_enumeration(enumeration)
+
+        return enumeration, num_sz
+
+    def simplify(self):
+        enumeration, sz = self._make_state_enumeration()
+        new_edges = dict()
+
+        for node, edges in self.edges.items():
+            for letter, set_edges in self.edges.items():
+                add_edge(new_edges, enumeration[node], letter, {enumeration[x] for x in set_edges})
+        self.nodes = {str(i) for i in range(sz)}
+        self.edges = new_edges
+        self.start = enumeration[self.start]
+        self.final = {enumeration[x] for x in self.final}
+
 
 def are_homomorphic(machine_a, machine_b):
     isomorphism = {machine_a.start: machine_b.start}

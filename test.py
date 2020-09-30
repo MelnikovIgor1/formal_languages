@@ -277,17 +277,17 @@ def test_invert_finite(num_nodes, single_edges, start, finish, alphabet, expecte
 
 @pytest.mark.parametrize("num_nodes,single_edges,start,finish,alphabet,expected", [
     (
-        3, [
-            ('s0', '', {'s1', 's2'}),
-            ('s0', 'b', {'s1', 's2'}),
-            ('s1', 'a', {'s1', 's0'})
-        ], 's0', {'s1'}, {'a', 'b', ''}, {
-            'alphabet': {'', 'b', 'a'},
-            'edges': {'s0': {'(1 + b)': {'s2', 's1'}},
-                      's1': {'a': {'s1', 's0'}}},
-            'final': {'s1'},
-            'nodes': {'s2', 's1', 's0'},
-            'start': 's0'}
+            3, [
+                ('s0', '', {'s1', 's2'}),
+                ('s0', 'b', {'s1', 's2'}),
+                ('s1', 'a', {'s1', 's0'})
+            ], 's0', {'s1'}, {'a', 'b', ''}, {
+                'alphabet': {'', 'b', 'a'},
+                'edges': {'s0': {'(1 + b)': {'s2', 's1'}},
+                          's1': {'a': {'s1', 's0'}}},
+                'final': {'s1'},
+                'nodes': {'s2', 's1', 's0'},
+                'start': 's0'}
     ),
 ])
 def test_make_single_edges(num_nodes, single_edges, start, finish, alphabet, expected):
@@ -299,20 +299,20 @@ def test_make_single_edges(num_nodes, single_edges, start, finish, alphabet, exp
 
 @pytest.mark.parametrize("num_nodes,single_edges,start,finish,alphabet,expected", [
     (
-        3, [
-            ('s0', '', {'s1', 's2'}),
-            ('s0', 'abc', {'s1', 's2'}),
-            ('s1', 'ac', {'s1', 's0'})
-        ], 's0', {'s1'}, {'a', 'b', 'c', ''}, {
-            'alphabet': {'', 'c', 'b', 'a'},
-            'edges': {'s0': {'': {'s1', 's2'}, 'a': {'s3'}},
-                      's1': {'a': {'s5'}},
-                      's3': {'b': {'s4'}},
-                      's4': {'c': {'s1', 's2'}},
-                      's5': {'c': {'s0', 's1'}}},
-            'final': {'s1'},
-            'nodes': {'s4', 's2', 's5', 's0', 's1', 's3'},
-            'start': 's0'}
+            3, [
+                ('s0', '', {'s1', 's2'}),
+                ('s0', 'abc', {'s1', 's2'}),
+                ('s1', 'ac', {'s1', 's0'})
+            ], 's0', {'s1'}, {'a', 'b', 'c', ''}, {
+                'alphabet': {'', 'c', 'b', 'a'},
+                'edges': {'s0': {'': {'s1', 's2'}, 'a': {'s3'}},
+                          's1': {'a': {'s5'}},
+                          's3': {'b': {'s4'}},
+                          's4': {'c': {'s1', 's2'}},
+                          's5': {'c': {'s0', 's1'}}},
+                'final': {'s1'},
+                'nodes': {'s4', 's2', 's5', 's0', 's1', 's3'},
+                'start': 's0'}
     ),
 ])
 def test_make_0_1_edges(num_nodes, single_edges, start, finish, alphabet, expected):
@@ -320,3 +320,33 @@ def test_make_0_1_edges(num_nodes, single_edges, start, finish, alphabet, expect
     machine.make_0_1_edges()
 
     assert expected == machine._make_dump()
+
+
+@pytest.mark.parametrize("num_nodes,single_edges,start,finish,alphabet,expected", [
+    (
+            5, [
+                ('s0', '', {'s1'}),
+                ('s0', 'abc', {'s2'}),
+                ('s1', 'a', {'s4'}),
+                ('s1', 'b', {'s1'}),
+                ('s2', 'a', {'s3'}),
+                ('s2', 'b', {'s3'}),
+                ('s3', 'a', {'s2'}),
+                ('s3', 'b', {'s2'}),
+                ('s4', 'a', {'s4'})
+            ], 's0', {'s1'}, {'a', 'b', 'c', ''}, {'alphabet': {'a', '', 'c', 'b'},
+ 'edges': {'0': {'a': {'0'}, 'b': {'0'}},
+           '1': {'a': {'2'}, 'b': {'1'}},
+           '2': {'a': {'2'}},
+           '3': {'': {'1'}, 'abc': {'0'}}},
+ 'final': {'1'},
+ 'nodes': {'1', '2', '3', '0'},
+ 'start': '3'}
+    ),
+])
+def test_simplify(num_nodes, single_edges, start, finish, alphabet, expected):
+    machine = prepare_machine(num_nodes, single_edges, start, finish, alphabet)
+    machine.simplify()
+
+    # assert expected == machine._make_dump()
+    assert are_equal(parse_machine(expected), machine)

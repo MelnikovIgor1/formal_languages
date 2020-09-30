@@ -580,10 +580,12 @@ class StateMachine(object):
 
     def simplify(self):
         enumeration, sz = self._make_state_enumeration()
+        for a in enumeration:
+            enumeration[a] = str(enumeration[a])
         new_edges = dict()
 
         for node, edges in self.edges.items():
-            for letter, set_edges in self.edges.items():
+            for letter, set_edges in edges.items():
                 add_edge(new_edges, enumeration[node], letter, {enumeration[x] for x in set_edges})
         self.nodes = {str(i) for i in range(sz)}
         self.edges = new_edges
@@ -605,6 +607,7 @@ def are_homomorphic(machine_a, machine_b):
                 return False
 
     queue = [machine_a.start]
+    used = set(machine_a.start)
 
     while queue:
         current = queue.pop(0)
@@ -625,7 +628,9 @@ def are_homomorphic(machine_a, machine_b):
                         if not update_isomorphism(isomorphism, node_a, node_b):
                             return False
                         else:
-                            queue.append(node_a)
+                            if node_a not in used:
+                                used.add(node_a)
+                                queue.append(node_a)
 
     for node_a in machine_a.final:
         if isomorphism[node_a] not in machine_b.final:

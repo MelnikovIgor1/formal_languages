@@ -1,5 +1,6 @@
 import math
 import os
+import subprocess
 from copy import copy
 import copy
 import json
@@ -255,7 +256,7 @@ class StateMachine(object):
                 self._add_edge(from_, mix_word, {to_})
 
     def make_tex(self, filename):
-        os.system("if ! [ -f ./out ]; then\nmkdir ./out\nfi\n")
+        subprocess.run('if ! [ -d out ]; then mkdir ./out; fi', shell=True, check=True)
 
         self.prepared_files.append(filename)
         tex_text = ''
@@ -307,15 +308,15 @@ class StateMachine(object):
 
     def prepare_files(self):
         for file in self.prepared_files:
-            os.system('pdflatex  -output-directory=out -jobname={} out/{}.tex'.format(file, file))
+            subprocess.run('pdflatex  -output-directory=out -jobname={} out/{}.tex'.format(file, file), shell=True, check=True)
 
         for file in self.prepared_files:
-            os.system('rm out/{}.log'.format(file))
-            os.system('rm out/{}.aux'.format(file))
-            # os.system('rm out/{}.tex'.format(file))
+            subprocess.run('rm out/{}.log'.format(file), shell=True, check=True)
+            subprocess.run('rm out/{}.aux'.format(file), shell=True, check=True)
+            # subprocess.run('rm out/{}.tex'.format(file))
 
         for file in self.prepared_files:
-            os.system('open out/{}.pdf'.format(file))
+            subprocess.run('open out/{}.pdf'.format(file), shell=True, check=True)
 
     def remove_epsilon(self):
         new_edges = []
@@ -356,7 +357,7 @@ class StateMachine(object):
         diction = {frozenset({self.start}): '0'}
         new_nodes = {'0'}
         new_edges = dict()
-        new_start = '0'  # frozenset({self.start})
+        new_start = '0'
         new_final = set()
 
         queue = [frozenset({self.start})]
@@ -478,7 +479,7 @@ class StateMachine(object):
         self._clear_edges()
 
     def make_regular_tex(self, filename, text):
-        os.system("if ! [ -f ./out ]; then\nmkdir ./out\nfi\n")
+        subprocess.run("if ! [ -f ./out ]; then\nmkdir ./out\nfi\n")
 
         self.prepared_files.append(filename)
         tex_text = ''
@@ -611,11 +612,11 @@ def are_homomorphic(machine_a, machine_b):
         if current in machine_a.edges:
             for letter, a_edges in machine_a.edges[current].items():
                 if len(a_edges) > 1:
-                    raise Exception("ambiguous edge")
+                    raise ValueError("ambiguous edge")
 
                 b_edges = machine_b._get_edge(isomorphism[current], letter)
                 if len(b_edges) > 1:
-                    raise Exception("ambiguous edge")
+                    raise ValueError("ambiguous edge")
 
                 if len(a_edges) != len(b_edges):
                     return False

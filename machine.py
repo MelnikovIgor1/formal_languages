@@ -1,6 +1,7 @@
 import math
 import os
 import subprocess
+from collections import namedtuple
 from copy import copy
 import copy
 import json
@@ -554,10 +555,11 @@ class StateMachine(object):
         for node in self.nodes:
             enumeration.update({node: dict()})
             current_dict = dict()
+            Complex_edge = namedtuple("Complex_edge", "letter nodes_set")
             current_dict_hashable = set()
             for letter, edge in self.edges[node].items():
                 current_dict.update({letter: {last_dict[node_] for node_ in edge}})
-                current_dict_hashable.add((letter, frozenset({last_dict[node_] for node_ in edge})))
+                current_dict_hashable.add(Complex_edge(letter, frozenset({last_dict[node_] for node_ in edge})))
             current_dict_hashable = frozenset(current_dict_hashable)
             if current_dict_hashable in sets:
                 enumeration.update({node: sets[current_dict_hashable]})

@@ -3,17 +3,14 @@ import os
 from copy import copy
 import copy
 import json
-from logging import exception
 
-import jsonpickle
-
-Epsilon = ''
+EPSILON = ''
 
 
 def word_sum(a, b):
-    if a == Epsilon:
+    if a == EPSILON:
         return '(1 + {})'.format(b)
-    if b == Epsilon:
+    if b == EPSILON:
         return '({} + 1)'.format(a)
     return '({} + {})'.format(a, b)
 
@@ -84,13 +81,13 @@ def add_edge(edges, from_, letter, to_):
 
 
 class StateMachine(object):
-    def __init__(self, nodes, edges, start, final, alphabet):
+    def __init__(self, nodes: set, edges: map, start: str, final: set, alphabet: set):
         """Constructor"""
-        self.nodes = nodes  # set
-        self.edges = edges  # map(str, map(str, set))
-        self.start = start  # str
-        self.final = final  # set
-        self.Alphabet = alphabet  # set
+        self.nodes = nodes
+        self.edges = edges
+        self.start = start
+        self.final = final
+        self.alphabet = alphabet
 
         self.prepared_files = []
 
@@ -183,7 +180,7 @@ class StateMachine(object):
                               'edges': self.edges,
                               'start': self.start,
                               'final': self.final,
-                              'alphabet': self.Alphabet})
+                              'alphabet': self.alphabet})
 
     def _erase_edge(self, from_, letter, to_):
         self.edges[from_][letter] = self.edges[from_][letter] - to_
@@ -298,7 +295,7 @@ class StateMachine(object):
         self.nodes = set(data['nodes'])
         self.start = data['start']
         self.final = set(data['final'])
-        self.Alphabet = set(data['alphabet'])
+        self.alphabet = set(data['alphabet'])
 
         for complex_edge in data['edges']:
             self._add_edge(complex_edge[0], complex_edge[1], set(complex_edge[2]))
@@ -337,11 +334,11 @@ class StateMachine(object):
                 if current in self.edges:
                     if current != node:
                         for (letter, edge) in self.edges[current].items():
-                            if letter != Epsilon:
+                            if letter != EPSILON:
                                 new_edges.append((node, (letter, copy.deepcopy(edge))))
 
-                    if Epsilon in self.edges[current]:
-                        for new_node in self.edges[current][Epsilon]:
+                    if EPSILON in self.edges[current]:
+                        for new_node in self.edges[current][EPSILON]:
                             if not visited[new_node]:
                                 queue.append(new_node)
                                 visited[new_node] = True
@@ -350,10 +347,10 @@ class StateMachine(object):
             self._add_edge(out, letter, to)
 
         for all_edges in self.edges.values():
-            all_edges.pop(Epsilon, None)
+            all_edges.pop(EPSILON, None)
 
-        if Epsilon in self.Alphabet:
-            self.Alphabet.remove(Epsilon)
+        if EPSILON in self.alphabet:
+            self.alphabet.remove(EPSILON)
 
     def make_unique_path(self):
         diction = {frozenset({self.start}): '0'}
@@ -410,7 +407,7 @@ class StateMachine(object):
         self.nodes.add(new_node)
 
         for node in self.final:
-            self._add_edge(node, Epsilon, {new_node})
+            self._add_edge(node, EPSILON, {new_node})
 
         self.final = {new_node}
 
@@ -423,11 +420,11 @@ class StateMachine(object):
 
         for node in self.nodes:
             if node in self.edges:
-                new_letters = self.Alphabet - self.edges[node].keys()
+                new_letters = self.alphabet - self.edges[node].keys()
                 for letter in new_letters:
                     self._add_edge(node, letter, {new_node})
             else:
-                for letter in self.Alphabet:
+                for letter in self.alphabet:
                     self._add_edge(node, letter, {new_node})
 
     def make_single_edges(self):
@@ -639,8 +636,8 @@ def are_homomorphic(machine_a, machine_b):
     return True
 
 
-def are_equal(machine_a, machine_b):
-    if machine_a.Alphabet != machine_b.Alphabet:
+def are_equal(machine_a: StateMachine, machine_b: StateMachine):
+    if machine_a.alphabet != machine_b.alphabet:
         return False
 
     x = are_homomorphic(machine_a, machine_b)

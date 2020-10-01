@@ -1,7 +1,7 @@
 Запуск тестов: pytest -v test.py
 
 В модуле machine реализован класс StateMachine. Класс стоит машину при помощи метода upload_automata(file_name). 
- make_tex(file_name) создает tex файл с записанным в нем автоматом. 
+make_tex(file_name) создает tex файл с записанным в нем автоматом. 
 prepare_files() собирает pdf для созданных tex фалов и открывает его.
 
 В классе реализованы методы 
